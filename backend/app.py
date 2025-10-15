@@ -6,12 +6,11 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from services.url_metadata import fetch_url_metadata
-from services.android_generator import generate_android_project
-from services.zipper import create_zip
-from api_key_manager import APIKeyManager
+from backend.services.url_metadata import fetch_url_metadata
+from backend.services.android_generator import generate_android_project
+from backend.services.zipper import create_zip
+from backend.api_key_manager import APIKeyManager
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from apk_builder.version_detector import VersionDetector
 
 app = Flask(__name__, static_folder='../frontend')

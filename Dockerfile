@@ -22,6 +22,9 @@ RUN mkdir -p /opt/apktool && \
 # Add apktool to PATH
 ENV PATH="/opt/apktool:${PATH}"
 
+# Set Python path to include app directory
+ENV PYTHONPATH="/app:${PYTHONPATH}"
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
