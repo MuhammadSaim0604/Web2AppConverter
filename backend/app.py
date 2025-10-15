@@ -2,6 +2,7 @@ import os
 import sys
 import uuid
 import shutil
+import threading
 from functools import wraps
 from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
@@ -346,9 +347,13 @@ def build_apk_api():
         download_url = f"{base_url}/api/v1/download/{job_id}"
         status_url = f"{base_url}/api/v1/status/{job_id}"
         
-        # Start building APK in background (synchronously due to free tier limitations)
-        # We immediately start building since we can't do true async on free tier
-        build_apk_async(job_id, app_name, url, icon_path, base_version)
+        # Start building APK in background thread
+        build_thread = threading.Thread(
+            target=build_apk_async,
+            args=(job_id, app_name, url, icon_path, base_version),
+            daemon=True
+        )
+        build_thread.start()
         
         # Return job info immediately
         return jsonify({

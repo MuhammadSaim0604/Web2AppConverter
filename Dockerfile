@@ -38,6 +38,6 @@ RUN mkdir -p db generated android_templates_apks
 # Expose port
 EXPOSE 5000
 
-# Start command
-
-CMD gunicorn backend.app:app --bind 0.0.0.0:$PORT --timeout 3600 --workers 2
+# Start command with increased timeout for APK building on slow CPU (30 minutes)
+# Using threads to support async job processing in background
+CMD gunicorn backend.app:app --bind 0.0.0.0:$PORT --timeout 1800 --workers 1 --threads 2 --worker-class gthread
