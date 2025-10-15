@@ -10,7 +10,5 @@ services:
         value: 3.11.9
       - key: PORT
         value: 10000
-      - key: PATH
-        value: /opt/apktool:$PATH
     plan: free
     autoDeploy: true
