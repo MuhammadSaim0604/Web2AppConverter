@@ -2,6 +2,11 @@
 #!/bin/bash
 set -e
 
+
+# Disable color output in non-interactive environments
+export TERM=dumb
+
+
 echo "=========================================="
 echo "Render Build Script - Installing Dependencies"
 echo "=========================================="
