@@ -1,0 +1,61 @@
+C:\Users\dell\Downloads\Web2AppConverter-1>python setup_windows.py
+
+←[95m============================================================←[0m
+←[95mURL to Android App Converter - Windows Setup←[0m
+←[95m============================================================←[0m
+
+←[96m→ This script will install all required dependencies←[0m
+←[96m→ Installation directory: C:\Users\dell\Downloads\Web2AppConverter-1←[0m
+←[96m→ ←[0m
+Press Enter to start installation...
+
+←[95m============================================================←[0m
+←[95mSTEP 1/8: Checking Python Installation←[0m
+←[95m============================================================←[0m
+
+←[92m✓ Python 3.12.6 is already installed←[0m
+
+←[95m============================================================←[0m
+←[95mSTEP 2/8: Checking Java JDK Installation←[0m
+←[95m============================================================←[0m
+
+←[93m⚠ Java found, but version 21 required←[0m
+←[96m→ Installing Java JDK 21 from Adoptium...←[0m
+←[96m→ Downloading from https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.5%2B11/OpenJDK21U-jdk_x64_windows_hotspot_21.0.5_11.msi←[0m
+←[96m→ Running Java installer (this may take a few minutes)...←[0m
+✓ Java JDK 21 installed successfully
+
+============================================================
+STEP 3/8: Checking apktool Installation
+============================================================
+
+⚠ apktool not found
+→ Installing apktool 2.9.3...
+→ Downloading from https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/windows/apktool.bat
+→ Downloading from https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar
+
+WARNING: The data being saved is truncated to 1024 characters.
+
+SUCCESS: Specified value was saved.
+✓ apktool installed successfully
+
+============================================================
+STEP 4/8: Checking Android SDK Build Tools
+============================================================
+
+⚠ Android SDK Build Tools not found
+→ Installing Android SDK Build Tools 34.0.0...
+→ Downloading from https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
+→ Extracting Android Command Line Tools...
+→ Installing build-tools;34.0.0 (this may take a while)...
+
+ERROR: JAVA_HOME is set to an invalid directory: C:\Program Files\Common Files\Oracle\Java\javapath
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation.
+✗ Failed to install Android SDK Build Tools
+✗ Setup failed at step: Android SDK
+→ Please resolve the issue and run the script again
+
+C:\Users\dell\Downloads\Web2AppConverter-1>
+C:\Users\dell\Downloads\Web2AppConverter-1>

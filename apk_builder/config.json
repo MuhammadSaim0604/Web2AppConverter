@@ -1,0 +1,18 @@
+{
+  "base_versions": {
+    "base_1": {
+      "apk_path": "android_templates_apks/base_1.apk",
+      "customizations": ["app_name", "url", "icon"],
+      "required_fields": ["app_name", "url"],
+      "optional_fields": ["icon"]
+    }
+  },
+  "keystore": {
+    "_comment": "DEVELOPMENT CREDENTIALS ONLY - For production, use environment variables: KEYSTORE_PATH, KEYSTORE_ALIAS, KEYSTORE_PASS, KEY_PASS",
+    "path": "android_templates_apks/keystore.jks",
+    "alias": "app-key",
+    "store_pass": "android123",
+    "key_pass": "android123"
+  },
+  "package_name_template": "com.web2app.{app_slug}"
+}

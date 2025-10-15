@@ -1,0 +1,50 @@
+PS C:\Users\dell\Downloads\Web2AppConverter-1> $env:PATH += ";C:\Users\dell\apktool"
+PS C:\Users\dell\Downloads\Web2AppConverter-1> apktool
+Apktool 2.9.3 - a tool for reengineering Android apk files
+with smali v3.0.3 and baksmali v3.0.3
+Copyright 2010 Ryszard Wiśniewski <brut.alll@gmail.com>
+Copyright 2010 Connor Tumbleson <connor.tumbleson@gmail.com>
+
+usage: apktool
+ -advance,--advanced   Print advanced information.
+ -version,--version    Print the version.
+ -p,--frame-path <dir>   Store framework files into <dir>.
+ -t,--tag <tag>          Tag frameworks using <tag>.
+usage: apktool d[ecode] [options] <file_apk>
+ -f,--force              Force delete destination directory.
+ -o,--output <dir>       The name of folder that gets written. (default: apk.out)
+ -p,--frame-path <dir>   Use framework files located in <dir>.
+ -r,--no-res             Do not decode resources.
+ -s,--no-src             Do not decode sources.
+ -t,--frame-tag <tag>    Use framework files tagged by <tag>.
+usage: apktool b[uild] [options] <app_path>
+ -f,--force-all          Skip changes detection and build all files.
+ -o,--output <dir>       The name of apk that gets written. (default: dist/name.apk)
+ -p,--frame-path <dir>   Use framework files located in <dir>.
+
+For additional info, see: https://apktool.org
+For smali/baksmali info, see: https://github.com/google/smali
+Press any key to continue . . .
+PS C:\Users\dell\Downloads\Web2AppConverter-1> venv\Scripts\python.exe backend\app.py
+ * Serving Flask app 'app'
+ * Debug mode: on
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.100.72:5000
+Press CTRL+C to quit
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 132-329-415
+Building APK with base version: base_1
+App Name: MineOS
+URL: https://mineflow-1ngx.onrender.com/
+Icon: Yes
+Starting APK build process...
+1. Cleaning up workspace...
+2. Decompiling base APK...
+✗ Build failed: [WinError 2] The system cannot find the file specified
+APK Build Error: [WinError 2] The system cannot find the file specified
+Traceback (most recent call last):
+  File "C:\Users\dell\Downloads\Web2AppConverter-1\backend\app.py", line 417, in build_custom_apk
+PS C:\Users\dell\Downloads\Web2AppConverter-1> 

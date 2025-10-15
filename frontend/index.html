@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL to Android App Converter</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 URL to Android App</h1>
+            <p>Convert any website into a fully functional Android application</p>
+        </header>
+
+        <div class="card">
+            <form id="converterForm">
+                <div class="form-group">
+                    <label for="url">Website URL *</label>
+                    <input 
+                        type="text" 
+                        id="url" 
+                        name="url" 
+                        placeholder="https://example.com" 
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="appName">App Name (optional)</label>
+                    <input 
+                        type="text" 
+                        id="appName" 
+                        name="appName" 
+                        placeholder="Auto-detected from website"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="appIcon">App Icon (optional)</label>
+                    <input 
+                        type="file" 
+                        id="appIcon" 
+                        name="appIcon" 
+                        accept="image/*"
+                        class="file-input"
+                    >
+                    <small class="hint">Upload a custom icon or we'll use the website's favicon</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="themeColor">Theme Color</label>
+                    <input 
+                        type="color" 
+                        id="themeColor" 
+                        name="themeColor" 
+                        value="#2196F3"
+                    >
+                </div>
+
+                <div class="form-group checkbox">
+                    <label>
+                        <input type="checkbox" id="enableOffline" name="enableOffline">
+                        Enable Offline Support
+                    </label>
+                </div>
+
+                <button type="submit" id="generateBtn" class="btn-primary">
+                    Build APK
+                </button>
+            </form>
+
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Building your Android APK...</p>
+            </div>
+
+            <div id="success" class="success hidden">
+                <div class="success-icon">✓</div>
+                <h3>APK Generated Successfully!</h3>
+                <p>Your Android APK is ready to install on your device.</p>
+            </div>
+
+            <div id="error" class="error hidden">
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+
+        <div class="api-section card">
+            <h2>🔑 API Access for Developers</h2>
+            <p class="api-description">Generate an API key to integrate our APK building service into your website or application.</p>
+            
+            <div class="api-generate">
+                <input 
+                    type="text" 
+                    id="apiKeyName" 
+                    placeholder="API Key Name (e.g., My Website)" 
+                    class="api-input"
+                >
+                <button id="generateApiBtn" class="btn-primary">
+                    Generate API Key
+                </button>
+            </div>
+
+            <div id="apiKeyDisplay" class="api-key-display hidden">
+                <div class="api-key-header">
+                    <h3>✓ API Key Generated!</h3>
+                    <p class="warning">⚠️ Save this key now - you won't see it again!</p>
+                </div>
+                <div class="api-key-value">
+                    <code id="generatedApiKey"></code>
+                    <button id="copyApiKey" class="btn-copy">📋 Copy</button>
+                </div>
+                <p class="api-docs-link">
+                    📚 <a href="#" id="viewApiDocs">View API Documentation</a>
+                </p>
+            </div>
+
+            <div class="api-keys-list">
+                <h3>Your API Keys</h3>
+                <div id="apiKeysList" class="keys-container">
+                    <p class="no-keys">No API keys yet. Generate one to get started!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="features">
+            <h2>Features Included</h2>
+            <div class="feature-grid">
+                <div class="feature">
+                    <span class="icon">📱</span>
+                    <h3>WebView Integration</h3>
+                    <p>Secure WebView with JavaScript support</p>
+                </div>
+                <div class="feature">
+                    <span class="icon">🔄</span>
+                    <h3>Pull to Refresh</h3>
+                    <p>Swipe down to reload content</p>
+                </div>
+                <div class="feature">
+                    <span class="icon">📷</span>
+                    <h3>Camera Access</h3>
+                    <p>Full camera and file upload support</p>
+                </div>
+                <div class="feature">
+                    <span class="icon">📍</span>
+                    <h3>Geolocation</h3>
+                    <p>Location permissions included</p>
+                </div>
+                <div class="feature">
+                    <span class="icon">🍪</span>
+                    <h3>Cookies & Storage</h3>
+                    <p>Persistent data and cookies</p>
+                </div>
+                <div class="feature">
+                    <span class="icon">🎨</span>
+                    <h3>Custom Splash</h3>
+                    <p>Branded splash screen</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Compatible with Android 6.0+ (API 23) | Target: Android 14 (API 34)</p>
+        </footer>
+    </div>
+
+    <!-- Image Cropping Modal -->
+    <div id="cropModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Crop Your App Icon</h3>
+            <div class="crop-container">
+                <img id="cropImage" src="">
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="cancelCrop" class="btn-secondary">Cancel</button>
+                <button type="button" id="applyCrop" class="btn-primary">Apply Crop</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

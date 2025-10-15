@@ -1,0 +1,16 @@
+
+services:
+  - type: web
+    name: url-to-apk-converter
+    runtime: python
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: gunicorn backend.app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: PORT
+        value: 10000
+      - key: PATH
+        value: /opt/apktool:$PATH
+    plan: free
+    autoDeploy: true
