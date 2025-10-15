@@ -40,4 +40,4 @@ EXPOSE 5000
 
 # Start command
 
-CMD gunicorn backend.app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 2
+CMD gunicorn backend.app:app --bind 0.0.0.0:$PORT --timeout 3600 --workers 2
