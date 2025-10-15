@@ -1,5 +1,6 @@
 
 #!/bin/bash
+set -e
 
 echo "=========================================="
 echo "Render Build Script - Installing Dependencies"
