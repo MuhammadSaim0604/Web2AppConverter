@@ -3,7 +3,7 @@ FROM python:3.11-slim
 # Install system dependencies including ncurses for tput
 RUN apt-get update && apt-get install -y \
     ncurses-bin \
-    openjdk-17-jdk \
+    default-jdk \
     wget \
     unzip \
     && rm -rf /var/lib/apt/lists/*
