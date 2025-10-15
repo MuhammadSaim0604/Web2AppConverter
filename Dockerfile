@@ -39,4 +39,5 @@ RUN mkdir -p db generated android_templates_apks
 EXPOSE 5000
 
 # Start command
-CMD gunicorn backend.app:app --bind 0.0.0.0:$PORT
+
+CMD gunicorn backend.app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 2
