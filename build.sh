@@ -17,7 +17,7 @@ echo "=========================================="
 # Step 1: Install Java JDK
 echo "[1/3] Installing Java JDK..."
 apt-get update -qq
-apt-get install -y openjdk-17-jdk wget unzip
+apt-get install -y ncurses-bin openjdk-17-jdk wget unzip
 
 # Verify Java installation
 java -version
