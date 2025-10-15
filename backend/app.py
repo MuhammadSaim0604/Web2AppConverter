@@ -10,6 +10,7 @@ from backend.services.url_metadata import fetch_url_metadata
 from backend.services.android_generator import generate_android_project
 from backend.services.zipper import create_zip
 from backend.api_key_manager import APIKeyManager
+from backend.job_manager import JobManager
 
 from apk_builder.version_detector import VersionDetector
 
@@ -17,6 +18,7 @@ app = Flask(__name__, static_folder='../frontend')
 CORS(app)
 
 api_key_manager = APIKeyManager()
+job_manager = JobManager()
 
 GENERATED_DIR = os.path.join(os.path.dirname(__file__), '..', 'generated')
 os.makedirs(GENERATED_DIR, exist_ok=True)
@@ -242,13 +244,56 @@ def cleanup(job_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def build_apk_async(job_id, app_name, url, icon_path, base_version):
+    """Background function to build APK"""
+    from apk_builder.builder import APKBuilder
+    
+    try:
+        # Update status to processing
+        job_manager.set_processing(job_id, 'Starting APK build...')
+        
+        # Build APK
+        builder = APKBuilder(base_version=base_version)
+        
+        job_manager.set_progress(job_id, 20, 'Decompiling base APK...')
+        
+        apk_path = builder.build(
+            app_name=app_name,
+            url=url,
+            icon_path=icon_path
+        )
+        
+        job_manager.set_progress(job_id, 90, 'Finalizing APK...')
+        
+        # Copy APK to final location
+        final_apk_path = os.path.join(GENERATED_DIR, f'{job_id}.apk')
+        shutil.copy(apk_path, final_apk_path)
+        
+        # Update job as completed
+        job_manager.set_completed(job_id, final_apk_path)
+        
+        # Cleanup
+        builder.cleanup()
+        if icon_path and os.path.exists(icon_path):
+            try:
+                os.remove(icon_path)
+            except:
+                pass
+                
+    except Exception as e:
+        # Update job as failed
+        job_manager.set_failed(job_id, str(e))
+        print(f"Background APK Build Error for job {job_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
 @app.route('/api/v1/build-apk', methods=['POST'])
 @require_api_key
 def build_apk_api():
     """
-    External API: Build custom APK with auto-detection of base version
+    External API: Build custom APK with async job system
     Accepts: app_name, url, optional icon
-    Returns: Signed APK file
+    Returns: Job ID and download link immediately
     Requires: API key via X-API-Key header or api_key parameter
     """
     try:
@@ -267,13 +312,9 @@ def build_apk_api():
         if not url.startswith(('http://', 'https://')):
             url = 'https://' + url
 
-        # Prepare user inputs for version detection
-        user_inputs = {
-            'app_name': app_name,
-            'url': url,
-            'icon': None
-        }
-
+        # Generate job ID
+        job_id = str(uuid.uuid4())
+        
         # Save uploaded icon if provided
         icon_path = None
         if uploaded_icon:
@@ -285,67 +326,40 @@ def build_apk_api():
                 ext = uploaded_icon.filename.rsplit('.', 1)[1].lower() if uploaded_icon.filename and '.' in uploaded_icon.filename else 'png'
                 safe_filename = f'icon.{ext}'
 
-            icon_path = os.path.join(icon_dir, f'{uuid.uuid4()}_{safe_filename}')
+            icon_path = os.path.join(icon_dir, f'{job_id}_{safe_filename}')
             uploaded_icon.save(icon_path)
-            user_inputs['icon'] = icon_path
 
         # Auto-detect base version
+        user_inputs = {
+            'app_name': app_name,
+            'url': url,
+            'icon': icon_path
+        }
         detector = VersionDetector()
         base_version = detector.detect_base_version(user_inputs)
-
-        # Build APK (builder uses unique temp directory)
-        from apk_builder.builder import APKBuilder
-        builder = APKBuilder(base_version=base_version)
-
-        try:
-            apk_path = builder.build(
-                app_name=app_name,
-                url=url,
-                icon_path=icon_path
-            )
-
-            # Copy APK to a temporary location before cleanup
-            final_apk_path = os.path.join(GENERATED_DIR, f'{uuid.uuid4()}.apk')
-            shutil.copy(apk_path, final_apk_path)
-
-            # Generate download filename
-            safe_app_name = "".join(c for c in app_name if c.isalnum() or c in (' ', '-', '_')).strip()
-            safe_app_name = safe_app_name.replace(' ', '_')
-            download_name = f"{safe_app_name}.apk"
-
-            # Send APK file
-            response = send_file(
-                final_apk_path,
-                as_attachment=True,
-                download_name=download_name,
-                mimetype='application/vnd.android.package-archive'
-            )
-
-            # Schedule cleanup after sending
-            @response.call_on_close
-            def cleanup_files():
-                builder.cleanup()
-                if icon_path and os.path.exists(icon_path):
-                    try:
-                        os.remove(icon_path)
-                    except:
-                        pass
-                if os.path.exists(final_apk_path):
-                    try:
-                        os.remove(final_apk_path)
-                    except:
-                        pass
-
-            return response
-
-        except Exception as e:
-            builder.cleanup()
-            if icon_path and os.path.exists(icon_path):
-                try:
-                    os.remove(icon_path)
-                except:
-                    pass
-            raise
+        
+        # Create job in database
+        job_manager.create_job(job_id, app_name, url, has_icon=bool(uploaded_icon))
+        
+        # Get base URL for download link
+        base_url = request.host_url.rstrip('/')
+        download_url = f"{base_url}/api/v1/download/{job_id}"
+        status_url = f"{base_url}/api/v1/status/{job_id}"
+        
+        # Start building APK in background (synchronously due to free tier limitations)
+        # We immediately start building since we can't do true async on free tier
+        build_apk_async(job_id, app_name, url, icon_path, base_version)
+        
+        # Return job info immediately
+        return jsonify({
+            'success': True,
+            'job_id': job_id,
+            'download_url': download_url,
+            'status_url': status_url,
+            'message': 'APK build job created successfully. Use the download_url to get your APK.',
+            'app_name': app_name,
+            'url': url
+        }), 202
 
     except Exception as e:
         print(f"API APK Build Error: {str(e)}")
@@ -468,6 +482,120 @@ def build_custom_apk():
 
     except Exception as e:
         print(f"APK Build Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v1/status/<job_id>', methods=['GET'])
+def get_job_status(job_id):
+    """
+    Get status of APK build job
+    Returns current status, progress, and messages
+    """
+    try:
+        job = job_manager.get_job(job_id)
+        
+        if not job:
+            return jsonify({
+                'success': False,
+                'error': 'Job not found',
+                'message': 'Invalid job ID or job may have expired'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'job': {
+                'job_id': job['job_id'],
+                'app_name': job['app_name'],
+                'url': job['url'],
+                'status': job['status'],
+                'progress': job['progress'],
+                'message': job['message'],
+                'error': job.get('error'),
+                'created_at': job['created_at'],
+                'completed_at': job.get('completed_at')
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v1/download/<job_id>', methods=['GET'])
+def download_apk(job_id):
+    """
+    Download APK or get status if not ready
+    This endpoint checks job status and returns APK if ready, or status message if still processing
+    """
+    try:
+        job = job_manager.get_job(job_id)
+        
+        if not job:
+            return jsonify({
+                'success': False,
+                'error': 'Job not found',
+                'message': 'Invalid job ID. Please check your job ID or the job may have expired.'
+            }), 404
+        
+        # Check job status
+        if job['status'] == 'pending':
+            return jsonify({
+                'success': False,
+                'status': 'pending',
+                'message': 'Your APK build is in queue. Please wait and try again in a few moments.',
+                'progress': job['progress'],
+                'job_id': job_id
+            }), 202
+        
+        elif job['status'] == 'processing':
+            return jsonify({
+                'success': False,
+                'status': 'processing',
+                'message': f"Your APK is being built... {job['message']}",
+                'progress': job['progress'],
+                'job_id': job_id,
+                'tip': 'APK building can take 10-20 minutes on free tier. Please be patient.'
+            }), 202
+        
+        elif job['status'] == 'failed':
+            return jsonify({
+                'success': False,
+                'status': 'failed',
+                'message': 'APK build failed',
+                'error': job.get('error', 'Unknown error occurred'),
+                'job_id': job_id
+            }), 500
+        
+        elif job['status'] == 'completed':
+            # APK is ready, send file
+            apk_path = job.get('apk_path')
+            
+            if not apk_path or not os.path.exists(apk_path):
+                return jsonify({
+                    'success': False,
+                    'error': 'APK file not found',
+                    'message': 'The APK was built but the file is missing. Please try building again.'
+                }), 404
+            
+            # Generate download filename
+            safe_app_name = "".join(c for c in job['app_name'] if c.isalnum() or c in (' ', '-', '_')).strip()
+            safe_app_name = safe_app_name.replace(' ', '_')
+            download_name = f"{safe_app_name}.apk"
+            
+            return send_file(
+                apk_path,
+                as_attachment=True,
+                download_name=download_name,
+                mimetype='application/vnd.android.package-archive'
+            )
+        
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Unknown status',
+                'message': f'Job is in unknown state: {job["status"]}'
+            }), 500
+            
+    except Exception as e:
+        print(f"Download Error: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500

@@ -27,11 +27,25 @@ https://your-domain.com/api/v1
 - API Key (generate from the dashboard)
 - HTTP client capable of multipart/form-data requests
 
+### How It Works (Async Workflow)
+
+The API uses an **asynchronous job-based system** to handle APK builds:
+
+1. **Create Job** → Call `/api/v1/build-apk` to create a build job
+2. **Get Links** → Receive `job_id`, `download_url`, and `status_url` immediately
+3. **Monitor Progress** → Poll `/api/v1/status/{job_id}` to check build status
+4. **Download APK** → Use `/api/v1/download/{job_id}` to get APK when ready
+
+**Why Async?** APK building can take 10-20 minutes on free tier (0.1 CPU), so you get the download link immediately and check when it's ready!
+
 ### Quick Start
 
 1. **Generate API Key**: Visit the web interface and click "Generate API Key"
 2. **Save Your Key**: Copy and securely store your API key (you won't see it again!)
-3. **Make Your First Request**: Use the API key in the `X-API-Key` header
+3. **Create Build Job**: POST to `/api/v1/build-apk` with your API key
+4. **Get Download Link**: Response includes `download_url` - save it!
+5. **Check Status**: Poll the `status_url` or try downloading directly
+6. **Download APK**: When ready, the `download_url` will return your APK file
 
 ---
 
@@ -63,11 +77,11 @@ curl -X POST https://your-domain.com/api/v1/build-apk \
 
 ## 📡 API Endpoints
 
-### 1. Build APK
+### 1. Build APK (Async)
 
 **Endpoint:** `POST /api/v1/build-apk`
 
-**Description:** Generate a custom Android APK from a website URL.
+**Description:** Create an APK build job and get download link immediately. The APK builds in background.
 
 **Authentication:** Required
 
@@ -83,9 +97,18 @@ curl -X POST https://your-domain.com/api/v1/build-apk \
 
 #### Response
 
-**Success (200 OK):**
-- Content-Type: `application/vnd.android.package-archive`
-- Body: Binary APK file
+**Success (202 Accepted):**
+```json
+{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "download_url": "https://your-domain.com/api/v1/download/550e8400-e29b-41d4-a716-446655440000",
+  "status_url": "https://your-domain.com/api/v1/status/550e8400-e29b-41d4-a716-446655440000",
+  "message": "APK build job created successfully. Use the download_url to get your APK.",
+  "app_name": "My App",
+  "url": "https://example.com"
+}
+```
 
 **Error (400 Bad Request):**
 ```json
@@ -113,34 +136,136 @@ curl -X POST https://your-domain.com/api/v1/build-apk \
 #### Example Request (cURL)
 
 ```bash
-# Basic request
+# Create APK build job
 curl -X POST https://your-domain.com/api/v1/build-apk \
   -H "X-API-Key: apk_your_api_key_here" \
   -F "appName=My App" \
-  -F "url=https://example.com" \
+  -F "url=https://example.com"
+
+# Response will include download_url - use it to download APK when ready
+```
+
+---
+
+### 2. Check Build Status
+
+**Endpoint:** `GET /api/v1/status/{job_id}`
+
+**Description:** Get current status of APK build job.
+
+**Authentication:** Not required
+
+#### Response
+
+**Success (200 OK):**
+```json
+{
+  "success": true,
+  "job": {
+    "job_id": "550e8400-e29b-41d4-a716-446655440000",
+    "app_name": "My App",
+    "url": "https://example.com",
+    "status": "processing",
+    "progress": 45,
+    "message": "Building APK...",
+    "error": null,
+    "created_at": "2025-10-15T12:00:00",
+    "completed_at": null
+  }
+}
+```
+
+**Possible Status Values:**
+- `pending` - Job created, waiting to start
+- `processing` - APK is being built
+- `completed` - APK ready for download
+- `failed` - Build failed
+
+**Error (404 Not Found):**
+```json
+{
+  "success": false,
+  "error": "Job not found",
+  "message": "Invalid job ID or job may have expired"
+}
+```
+
+#### Example Request (cURL)
+
+```bash
+curl https://your-domain.com/api/v1/status/550e8400-e29b-41d4-a716-446655440000
+```
+
+---
+
+### 3. Download APK
+
+**Endpoint:** `GET /api/v1/download/{job_id}`
+
+**Description:** Download APK if ready, or get status if still building.
+
+**Authentication:** Not required
+
+#### Response
+
+**APK Ready (200 OK):**
+- Content-Type: `application/vnd.android.package-archive`
+- Body: Binary APK file
+
+**Still Building (202 Accepted):**
+```json
+{
+  "success": false,
+  "status": "processing",
+  "message": "Your APK is being built... Decompiling base APK...",
+  "progress": 20,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "tip": "APK building can take 10-20 minutes on free tier. Please be patient."
+}
+```
+
+**Build Failed (500 Internal Server Error):**
+```json
+{
+  "success": false,
+  "status": "failed",
+  "message": "APK build failed",
+  "error": "Error details here",
+  "job_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Error (404 Not Found):**
+```json
+{
+  "success": false,
+  "error": "Job not found",
+  "message": "Invalid job ID. Please check your job ID or the job may have expired."
+}
+```
+
+#### Example Request (cURL)
+
+```bash
+# Try to download APK
+curl https://your-domain.com/api/v1/download/550e8400-e29b-41d4-a716-446655440000 \
   -o myapp.apk
 
-# With custom icon
-curl -X POST https://your-domain.com/api/v1/build-apk \
-  -H "X-API-Key: apk_your_api_key_here" \
-  -F "appName=My App" \
-  -F "url=https://example.com" \
-  -F "appIcon=@/path/to/icon.png" \
-  -o myapp.apk
+# If not ready, you'll get JSON status. If ready, APK downloads.
 ```
 
 ---
 
 ## 💻 Code Examples
 
-### JavaScript (Node.js)
+### JavaScript (Node.js) - Complete Workflow
 
 ```javascript
 const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
 
-async function buildAPK() {
+async function buildAndDownloadAPK() {
   const form = new FormData();
   form.append('appName', 'My Awesome App');
   form.append('url', 'https://example.com');
@@ -149,40 +274,71 @@ async function buildAPK() {
   // form.append('appIcon', fs.createReadStream('./icon.png'));
 
   try {
-    const response = await axios({
+    // Step 1: Create build job
+    console.log('Creating APK build job...');
+    const buildResponse = await axios({
       method: 'post',
       url: 'https://your-domain.com/api/v1/build-apk',
       headers: {
         'X-API-Key': 'apk_your_api_key_here',
         ...form.getHeaders()
       },
-      data: form,
+      data: form
+    });
+
+    const { job_id, download_url, status_url } = buildResponse.data;
+    console.log(`Job created: ${job_id}`);
+    console.log(`Download URL: ${download_url}`);
+
+    // Step 2: Poll for completion (check every 30 seconds)
+    let isComplete = false;
+    while (!isComplete) {
+      await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
+      
+      console.log('Checking build status...');
+      const statusResponse = await axios.get(status_url);
+      const { status, progress, message } = statusResponse.data.job;
+      
+      console.log(`Status: ${status} (${progress}%) - ${message}`);
+      
+      if (status === 'completed') {
+        isComplete = true;
+      } else if (status === 'failed') {
+        throw new Error('Build failed: ' + statusResponse.data.job.error);
+      }
+    }
+
+    // Step 3: Download APK
+    console.log('Downloading APK...');
+    const downloadResponse = await axios({
+      method: 'get',
+      url: download_url,
       responseType: 'arraybuffer'
     });
 
-    // Save APK file
-    fs.writeFileSync('myapp.apk', response.data);
-    console.log('APK built successfully!');
+    fs.writeFileSync('myapp.apk', downloadResponse.data);
+    console.log('APK downloaded successfully!');
+    
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
   }
 }
 
-buildAPK();
+buildAndDownloadAPK();
 ```
 
-### Python
+### Python - Complete Workflow
 
 ```python
 import requests
+import time
 
-def build_apk():
-    url = "https://your-domain.com/api/v1/build-apk"
+def build_and_download_apk():
+    # Step 1: Create build job
+    print("Creating APK build job...")
+    build_url = "https://your-domain.com/api/v1/build-apk"
     
-    headers = {
-        "X-API-Key": "apk_your_api_key_here"
-    }
-    
+    headers = {"X-API-Key": "apk_your_api_key_here"}
     data = {
         "appName": "My Awesome App",
         "url": "https://example.com"
@@ -190,17 +346,54 @@ def build_apk():
     
     # Optional: Add custom icon
     # files = {"appIcon": open("icon.png", "rb")}
+    # response = requests.post(build_url, headers=headers, data=data, files=files)
     
-    response = requests.post(url, headers=headers, data=data)
+    response = requests.post(build_url, headers=headers, data=data)
     
-    if response.status_code == 200:
+    if response.status_code != 202:
+        print(f"Error creating job: {response.json()}")
+        return
+    
+    job_data = response.json()
+    job_id = job_data['job_id']
+    download_url = job_data['download_url']
+    status_url = job_data['status_url']
+    
+    print(f"Job created: {job_id}")
+    print(f"Download URL: {download_url}")
+    
+    # Step 2: Poll for completion (check every 30 seconds)
+    while True:
+        time.sleep(30)  # Wait 30 seconds
+        
+        print("Checking build status...")
+        status_response = requests.get(status_url)
+        job_info = status_response.json()['job']
+        
+        status = job_info['status']
+        progress = job_info['progress']
+        message = job_info['message']
+        
+        print(f"Status: {status} ({progress}%) - {message}")
+        
+        if status == 'completed':
+            break
+        elif status == 'failed':
+            print(f"Build failed: {job_info.get('error')}")
+            return
+    
+    # Step 3: Download APK
+    print("Downloading APK...")
+    download_response = requests.get(download_url)
+    
+    if download_response.status_code == 200:
         with open("myapp.apk", "wb") as f:
-            f.write(response.content)
-        print("APK built successfully!")
+            f.write(download_response.content)
+        print("APK downloaded successfully!")
     else:
-        print(f"Error: {response.json()}")
+        print(f"Download error: {download_response.json()}")
 
-build_apk()
+build_and_download_apk()
 ```
 
 ### PHP
