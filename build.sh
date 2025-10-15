@@ -1,10 +1,12 @@
 
 #!/bin/bash
-set -e
-
 
 # Disable color output in non-interactive environments
 export TERM=dumb
+export NO_COLOR=1
+
+set -e
+
 
 
 echo "=========================================="
