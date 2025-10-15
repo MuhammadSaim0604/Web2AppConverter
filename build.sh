@@ -4,6 +4,7 @@
 # Disable color output in non-interactive environments
 export TERM=dumb
 export NO_COLOR=1
+export DEBIAN_FRONTEND=noninteractive
 
 set -e
 
