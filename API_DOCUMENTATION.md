@@ -396,13 +396,15 @@ def build_and_download_apk():
 build_and_download_apk()
 ```
 
-### PHP
+### PHP - Complete Workflow
 
 ```php
 <?php
 
-function buildAPK() {
-    $url = "https://your-domain.com/api/v1/build-apk";
+function buildAndDownloadAPK() {
+    // Step 1: Create build job
+    echo "Creating APK build job...\n";
+    $buildUrl = "https://your-domain.com/api/v1/build-apk";
     
     $ch = curl_init();
     
@@ -413,7 +415,7 @@ function buildAPK() {
         // 'appIcon' => new CURLFile('/path/to/icon.png')
     ];
     
-    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_URL, $buildUrl);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -422,31 +424,71 @@ function buildAPK() {
     ]);
     
     $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    
     curl_close($ch);
     
-    if ($httpCode === 200) {
-        file_put_contents('myapp.apk', $response);
-        echo "APK built successfully!";
+    $jobData = json_decode($response, true);
+    
+    if (!isset($jobData['job_id'])) {
+        echo "Error: " . $response . "\n";
+        return;
+    }
+    
+    $jobId = $jobData['job_id'];
+    $downloadUrl = $jobData['download_url'];
+    $statusUrl = $jobData['status_url'];
+    
+    echo "Job created: {$jobId}\n";
+    echo "Download URL: {$downloadUrl}\n";
+    
+    // Step 2: Poll for completion (check every 30 seconds)
+    while (true) {
+        sleep(30);
+        
+        echo "Checking build status...\n";
+        $statusResponse = file_get_contents($statusUrl);
+        $statusData = json_decode($statusResponse, true);
+        $job = $statusData['job'];
+        
+        echo "Status: {$job['status']} ({$job['progress']}%) - {$job['message']}\n";
+        
+        if ($job['status'] === 'completed') {
+            break;
+        }
+        
+        if ($job['status'] === 'failed') {
+            echo "Build failed: {$job['error']}\n";
+            return;
+        }
+    }
+    
+    // Step 3: Download APK
+    echo "Downloading APK...\n";
+    $apkData = file_get_contents($downloadUrl);
+    
+    if ($apkData) {
+        file_put_contents('myapp.apk', $apkData);
+        echo "APK downloaded successfully!\n";
     } else {
-        echo "Error: " . $response;
+        echo "Download error\n";
     }
 }
 
-buildAPK();
+buildAndDownloadAPK();
 ?>
 ```
 
-### Ruby
+### Ruby - Complete Workflow
 
 ```ruby
 require 'httparty'
+require 'json'
 
-def build_apk
-  url = "https://your-domain.com/api/v1/build-apk"
+def build_and_download_apk
+  # Step 1: Create build job
+  puts "Creating APK build job..."
+  build_url = "https://your-domain.com/api/v1/build-apk"
   
-  response = HTTParty.post(url,
+  response = HTTParty.post(build_url,
     headers: {
       'X-API-Key' => 'apk_your_api_key_here'
     },
@@ -457,49 +499,101 @@ def build_apk
     }
   )
   
-  if response.code == 200
-    File.open('myapp.apk', 'wb') { |file| file.write(response.body) }
-    puts "APK built successfully!"
-  else
+  if response.code != 202
     puts "Error: #{response.body}"
+    return
+  end
+  
+  job_data = JSON.parse(response.body)
+  job_id = job_data['job_id']
+  download_url = job_data['download_url']
+  status_url = job_data['status_url']
+  
+  puts "Job created: #{job_id}"
+  puts "Download URL: #{download_url}"
+  
+  # Step 2: Poll for completion (check every 30 seconds)
+  loop do
+    sleep(30)
+    
+    puts "Checking build status..."
+    status_response = HTTParty.get(status_url)
+    job_info = JSON.parse(status_response.body)['job']
+    
+    status = job_info['status']
+    progress = job_info['progress']
+    message = job_info['message']
+    
+    puts "Status: #{status} (#{progress}%) - #{message}"
+    
+    break if status == 'completed'
+    
+    if status == 'failed'
+      puts "Build failed: #{job_info['error']}"
+      return
+    end
+  end
+  
+  # Step 3: Download APK
+  puts "Downloading APK..."
+  download_response = HTTParty.get(download_url)
+  
+  if download_response.code == 200
+    File.open('myapp.apk', 'wb') { |file| file.write(download_response.body) }
+    puts "APK downloaded successfully!"
+  else
+    puts "Download error: #{download_response.body}"
   end
 end
 
-build_apk
+build_and_download_apk
 ```
 
-### Go
+### Go - Complete Workflow
 
 ```go
 package main
 
 import (
     "bytes"
+    "encoding/json"
     "fmt"
     "io"
     "mime/multipart"
     "net/http"
     "os"
+    "time"
 )
 
-func buildAPK() error {
-    url := "https://your-domain.com/api/v1/build-apk"
+type JobResponse struct {
+    Success     bool   `json:"success"`
+    JobID       string `json:"job_id"`
+    DownloadURL string `json:"download_url"`
+    StatusURL   string `json:"status_url"`
+}
+
+type StatusResponse struct {
+    Success bool `json:"success"`
+    Job     struct {
+        Status   string `json:"status"`
+        Progress int    `json:"progress"`
+        Message  string `json:"message"`
+        Error    string `json:"error"`
+    } `json:"job"`
+}
+
+func buildAndDownloadAPK() error {
+    // Step 1: Create build job
+    fmt.Println("Creating APK build job...")
+    buildURL := "https://your-domain.com/api/v1/build-apk"
     
     var b bytes.Buffer
     w := multipart.NewWriter(&b)
-    
-    // Add form fields
     w.WriteField("appName", "My Awesome App")
     w.WriteField("url", "https://example.com")
-    
-    // Optional: Add custom icon
-    // fw, _ := w.CreateFormFile("appIcon", "icon.png")
-    // file, _ := os.Open("icon.png")
-    // io.Copy(fw, file)
-    
     w.Close()
     
-    req, _ := http.NewRequest("POST", url, &b)
+    req, _ := http.NewRequest("POST", buildURL, &b)
     req.Header.Set("X-API-Key", "apk_your_api_key_here")
     req.Header.Set("Content-Type", w.FormDataContentType())
     
@@ -510,21 +604,48 @@ func buildAPK() error {
     }
     defer resp.Body.Close()
     
-    if resp.StatusCode == 200 {
-        out, _ := os.Create("myapp.apk")
-        defer out.Close()
-        io.Copy(out, resp.Body)
-        fmt.Println("APK built successfully!")
-    } else {
-        body, _ := io.ReadAll(resp.Body)
-        fmt.Printf("Error: %s\n", body)
+    var jobResp JobResponse
+    json.NewDecoder(resp.Body).Decode(&jobResp)
+    
+    fmt.Printf("Job created: %s\n", jobResp.JobID)
+    fmt.Printf("Download URL: %s\n", jobResp.DownloadURL)
+    
+    // Step 2: Poll for completion
+    for {
+        time.Sleep(30 * time.Second)
+        
+        fmt.Println("Checking build status...")
+        statusResp, _ := http.Get(jobResp.StatusURL)
+        var status StatusResponse
+        json.NewDecoder(statusResp.Body).Decode(&status)
+        statusResp.Body.Close()
+        
+        fmt.Printf("Status: %s (%d%%) - %s\n", 
+            status.Job.Status, status.Job.Progress, status.Job.Message)
+        
+        if status.Job.Status == "completed" {
+            break
+        }
+        if status.Job.Status == "failed" {
+            return fmt.Errorf("build failed: %s", status.Job.Error)
+        }
     }
     
+    // Step 3: Download APK
+    fmt.Println("Downloading APK...")
+    downloadResp, _ := http.Get(jobResp.DownloadURL)
+    defer downloadResp.Body.Close()
+    
+    out, _ := os.Create("myapp.apk")
+    defer out.Close()
+    io.Copy(out, downloadResp.Body)
+    
+    fmt.Println("APK downloaded successfully!")
     return nil
 }
 
 func main() {
-    buildAPK()
+    buildAndDownloadAPK()
 }
 ```
 
@@ -534,13 +655,16 @@ func main() {
 
 ### HTTP Status Codes
 
-| Code | Description |
-|------|-------------|
-| 200 | Success - APK file returned |
-| 400 | Bad Request - Missing or invalid parameters |
-| 401 | Unauthorized - Missing API key |
-| 403 | Forbidden - Invalid or revoked API key |
-| 500 | Internal Server Error - Server-side issue |
+| Code | Description | Used By |
+|------|-------------|---------|
+| 200 | Success - APK file returned | `/api/v1/download/{job_id}` (when ready) |
+| 202 | Accepted - Job created successfully | `/api/v1/build-apk` |
+| 202 | Accepted - APK still building | `/api/v1/download/{job_id}` (when pending) |
+| 400 | Bad Request - Missing or invalid parameters | `/api/v1/build-apk` |
+| 401 | Unauthorized - Missing API key | `/api/v1/build-apk` |
+| 403 | Forbidden - Invalid or revoked API key | `/api/v1/build-apk` |
+| 404 | Not Found - Job ID not found | `/api/v1/status/{job_id}`, `/api/v1/download/{job_id}` |
+| 500 | Internal Server Error - Server-side issue | All endpoints |
 
 ### Error Response Format
 
@@ -576,6 +700,27 @@ func main() {
 }
 ```
 
+#### Job Not Found (Async Endpoints)
+```json
+{
+  "success": false,
+  "error": "Job not found",
+  "message": "Invalid job ID or job may have expired"
+}
+```
+
+#### APK Still Building (Download Endpoint)
+```json
+{
+  "success": false,
+  "status": "processing",
+  "message": "Your APK is being built... Decompiling base APK...",
+  "progress": 20,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "tip": "APK building can take 10-20 minutes on free tier. Please be patient."
+}
+```
+
 ---
 
 ## 📋 Best Practices
@@ -590,18 +735,32 @@ func main() {
 - Provide user-friendly error messages
 - Log errors for debugging
 
-### 3. **Optimize Icon Files**
+### 3. **Async Workflow Best Practices**
+- **Poll Responsibly**: Check status every 30-60 seconds (don't spam the API)
+- **Set Timeouts**: Implement reasonable timeouts (30 minutes recommended)
+- **Store Job IDs**: Save `job_id` and `download_url` for later retrieval
+- **Handle All States**: Handle `pending`, `processing`, `completed`, and `failed` states
+- **Retry Logic**: Implement exponential backoff for network errors
+
+### 4. **Performance Tips**
+- **Expected Build Time**: 
+  - Free tier (0.1 CPU): 10-20 minutes
+  - Paid tier: 2-5 minutes
+- **Concurrent Jobs**: You can create multiple jobs simultaneously
+- **Download Links**: Save download URLs - they remain valid until job expires
+
+### 5. **Optimize Icon Files**
 - Use square images (1:1 aspect ratio)
 - Recommended size: 512x512 pixels
 - Supported formats: PNG, JPG
 - Keep file size under 2MB
 
-### 4. **URL Format**
+### 6. **URL Format**
 - Include protocol (https:// or http://)
 - Ensure URL is accessible and valid
 - Test URLs before sending to API
 
-### 5. **Rate Limiting**
+### 7. **Rate Limiting**
 - Be mindful of API usage
 - Implement caching where appropriate
 - Contact support for high-volume needs
@@ -647,30 +806,74 @@ Generated APKs include:
 - [ ] Generate API key from dashboard
 - [ ] Securely store API key
 - [ ] Test API with simple request
-- [ ] Implement error handling
+- [ ] Implement async polling logic (30-60 second intervals)
+- [ ] Implement error handling for all states
 - [ ] Add custom icon support (optional)
 - [ ] Deploy to production
 
 ---
 
-**Last Updated:** October 2025  
-**API Version:** 1.0
+## 📖 Quick Reference
+
+### Endpoint Summary
+
+| Endpoint | Method | Auth Required | Returns |
+|----------|--------|---------------|---------|
+| `/api/v1/build-apk` | POST | Yes | Job ID & URLs (202) |
+| `/api/v1/status/{job_id}` | GET | No | Job status (200) |
+| `/api/v1/download/{job_id}` | GET | No | APK or status (200/202) |
+
+### Job Status Values
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Job created, waiting to start |
+| `processing` | APK is being built |
+| `completed` | APK ready for download |
+| `failed` | Build failed, check error message |
+
+### Quick cURL Example
+
+```bash
+# 1. Create job
+curl -X POST https://your-domain.com/api/v1/build-apk \
+  -H "X-API-Key: your_key" \
+  -F "appName=My App" \
+  -F "url=https://example.com"
+
+# 2. Check status (use job_id from step 1)
+curl https://your-domain.com/api/v1/status/{job_id}
+
+# 3. Download APK (when ready)
+curl https://your-domain.com/api/v1/download/{job_id} -o app.apk
+```
 
 ---
 
-## Example Integration Flow
+**Last Updated:** October 2025  
+**API Version:** 1.0 (Async)
+
+---
+
+## 🔄 Async Integration Flow
 
 ```
 1. User enters website URL in your app
        ↓
-2. Your backend calls APK Builder API
+2. Your backend calls /api/v1/build-apk
        ↓
-3. API validates request and builds APK
+3. Receive job_id & download_url immediately (202 Accepted)
        ↓
-4. APK file returned to your backend
+4. Show user "Building..." with progress
        ↓
-5. You deliver APK to user
+5. Poll /api/v1/status/{job_id} every 30-60s
+       ↓
+6. When status = "completed", download from download_url
+       ↓
+7. Deliver APK to user
 ```
+
+**Build Time:** 10-20 minutes (free tier) | 2-5 minutes (paid tier)
 
 ---
 
